@@ -1627,11 +1627,11 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
     elif message.text == '☑ Забрать из магазина':
         text = f"<b>Адрес: {SHOP_ADDRESS}\nВремя работы с {SHOP_HOURS}</b>\n\n<b>Номер телефона: </b><code>{SHOP_PHONE}</code>"
         kb = [
-            [types.KeyboardButton(text="Оплатить наличными")],
-             [types.KeyboardButton(text=f"Оплатил СБП")],
-             [types.KeyboardButton(text=f"Оплатил ОЗОН карту")],
-             [types.KeyboardButton(text=f"Отмена")]
-             ]
+            [types.KeyboardButton(text="Я оплатил наличными")],
+            [types.KeyboardButton(text=f"Оплатил СБП")],
+            [types.KeyboardButton(text=f"Оплатил ОЗОН карту")],
+            [types.KeyboardButton(text=f"Отмена")]
+        ]
 
         keyboard = inline_menu(kb)
         await message.answer(text, parse_mode='html', reply_markup=keyboard)
@@ -1690,65 +1690,9 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
 @form_router.message(ProfileStatesGroup.zabrat_iz_magaziana)
 async def zabrat_iz_magaziana(message: types.Message, state: FSMContext) -> None:
     data = await state.get_data()
-    check = ['Оплатил ОЗОН карту', 'Оплатил ОЗОН карту', 'Оплатил СБП', 'Оплатил СБП']
+    check = ['Я оплатил наличными', 'Оплатил ОЗОН карту', 'Оплатил СБП']
 
-    if message.text == 'Оплатить наличными':
-
-        """СДЕЛАТЬ ОТЧИСТКУ КОРЗИНЫ"""
-        user_products = await get_basket_for_user(message.from_user.id)
-        korzina = []
-        pay = 0
-        for i, (product_id, product, count) in enumerate(user_products, 1):
-            products_str = f"{i}) {product} {count} шт\n"
-            product_info = await get_basket_info_product_by_id(product_id)
-            if not product_info or len(product_info) == 0:
-                korzina.append(f"{products_str}Товар: {product}, Количество: {count} шт")
-                continue
-            price = int(str(product_info[0][3]).replace("₽", "")) * count
-            korzina.append(f"{products_str}Цена: {price}💵Вес: {product_info[0][2]}⚖")
-            pay += price
-        korzina_str = "\n".join(korzina)
-
-        # Получаем имя пользователя
-        from_user = ''
-        if message.from_user.username is not None and len(message.from_user.username) > 1:
-            from_user = message.from_user.username
-        else:
-            from_user = 'Нет @имени_пользователя'
-
-        if len(from_user) < 1:
-            from_user = 'У пользователя нет логина'
-        
-        # Отправляем заказ администраторам
-        await send_order_to_admins(
-            user_id=message.from_user.id,
-            username=from_user,
-            payment_method=message.text,
-            delivery_type='Самовывоз',
-            address='Заберет из магазина',
-            total_price=pay
-        )
-
-        await message.answer(
-            text="Ваш заказ принят, ожидайте ответа оператора.\nОбычно это занимает около 1-3 часов\n\nМожете продолжить покупки и просмотр наших товаров 👍")
-        kb = [
-            [types.KeyboardButton(text="Вернутся на главную ⬅"), types.KeyboardButton(text="📦 Корзина")],
-            [types.KeyboardButton(text="🌿 Рапэ племенное"),
-             types.KeyboardButton(text="🍄 Мухоморы  шляпки")],
-            [types.KeyboardButton(text="🦔 Цельный гриб"),
-             types.KeyboardButton(text="💊 Микродозинг в капсулах")],
-            [types.KeyboardButton(text="⭐ Молотый"), types.KeyboardButton(text="💧 Капли для глаз")],
-            [types.KeyboardButton(text="🍄 Мухоморные крема"), types.KeyboardButton(text="🌱 Чай")],
-            [types.KeyboardButton(text="🥥 Мази"), types.KeyboardButton(text="📑 Разное")],
-            [types.KeyboardButton(text="⚜ Благовония")]
-        ]
-
-        keyboard = inline_menu(kb)
-        await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard,
-                               parse_mode='html')
-        await state.set_state(ProfileStatesGroup.categories)
-        await clear_basket(message.from_user.id)
-    elif message.text in check:
+    if message.text in check:
         """СДЕЛАТЬ ОТЧИСТКУ КОРЗИНЫ"""
         user_products = await get_basket_for_user(message.from_user.id)
         korzina = []

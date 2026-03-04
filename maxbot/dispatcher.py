@@ -99,7 +99,10 @@ class Dispatcher:
 
     async def _dispatch_callback(self, callback: CallbackQuery, state: FSMContext, update: Update):
         if callback.data and isinstance(callback.data, str) and callback.data.startswith("menu:"):
+            # Make menu callbacks behave like user messages.
             callback.message.text = callback.data.split("menu:", 1)[1]
+            callback.message.from_user = callback.from_user
+            callback.message.chat.id = callback.from_user.id
             try:
                 await callback.answer()
             except Exception:

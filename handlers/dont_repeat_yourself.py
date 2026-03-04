@@ -165,21 +165,7 @@ async def send_order_to_admins(
         order_text += f"📍 <b>Адрес доставки:</b>\n{address}\n\n"
     
     order_text += f"🕐 Время заказа: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}"
-    
-    # Создаем inline кнопки
-    inline_kb = [
-        [
-            types.InlineKeyboardButton(
-                text="✅ Подтвердить заказ",
-                callback_data=f"confirm_order_{order_id}"
-            ),
-            types.InlineKeyboardButton(
-                text="❌ Отмена заказа",
-                callback_data=f"cancel_order_{order_id}"
-            )
-        ]
-    ]
-    inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    order_text += "\n\nПроверьте оплату"
     
     # Отправляем сообщение администраторам
     try:
@@ -195,8 +181,7 @@ async def send_order_to_admins(
             sent_message = await bot.send_message(
                 user_id=chat_id,
                 text=order_text,
-                parse_mode='HTML',
-                reply_markup=inline_keyboard
+                parse_mode='HTML'
             )
             sent_messages.append(sent_message)
         print("✅ Заказ успешно отправлен администраторам!")
