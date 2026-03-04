@@ -291,7 +291,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             inline_kb = [
                 [
                     types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-                    types.InlineKeyboardButton(text=f"Количество: {current_count}", callback_data="count_display"),
+                    types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
                     types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
                 ],
                 [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
@@ -365,7 +365,7 @@ async def increase_product_count(callback: types.CallbackQuery, state: FSMContex
     inline_kb = [
         [
             types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-            types.InlineKeyboardButton(text=f"Количество: {current_count}", callback_data="count_display"),
+            types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
             types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
         ],
         [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
@@ -417,7 +417,7 @@ async def decrease_product_count(callback: types.CallbackQuery, state: FSMContex
     inline_kb = [
         [
             types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-            types.InlineKeyboardButton(text=f"Количество: {new_count}", callback_data="count_display"),
+            types.InlineKeyboardButton(text=f"Колич.: {new_count}", callback_data="count_display"),
             types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
         ],
         [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
@@ -876,7 +876,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             inline_kb = [
                 [
                     types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-                    types.InlineKeyboardButton(text=f"Количество: {current_count}", callback_data="count_display"),
+                    types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
                     types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
                 ],
                 [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
