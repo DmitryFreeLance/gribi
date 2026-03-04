@@ -316,6 +316,41 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             await state.set_state(ProfileStatesGroup.tovar)
             return
         else:
+            single_row_topics = {"Шляпки", "Капуслы", "Молотые"}
+            if topic in single_row_topics:
+                items = [record[1] for record in records]
+                chunk_size = 21
+                chunks = [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
+                first = True
+                for chunk in chunks:
+                    kb = [[types.KeyboardButton(text=item)] for item in chunk]
+                    keyboard = inline_menu(kb)
+                    if first:
+                        await message.answer(
+                            f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
+                            "<i>📑 Чтобы добавить товар в корзину, просто нажмите на него и проследуйте инструкции.\n\n</i>",
+                            reply_markup=keyboard,
+                            parse_mode='html'
+                        )
+                        first = False
+                    else:
+                        await message.answer(
+                            "<i>Продолжение списка товаров:</i>",
+                            reply_markup=keyboard,
+                            parse_mode='html'
+                        )
+                nav_kb = [
+                    [types.KeyboardButton(text="Назад ⬅")],
+                    [types.KeyboardButton(text="📦 Корзина")],
+                ]
+                nav_keyboard = inline_menu(nav_kb)
+                await message.answer(
+                    "<i>Навигация:</i>",
+                    reply_markup=nav_keyboard,
+                    parse_mode='html'
+                )
+                await state.set_state(ProfileStatesGroup.tovar)
+                return
             kb = [
                 [types.KeyboardButton(text="Назад ⬅")],
                 [types.KeyboardButton(text="📦 Корзина")],
