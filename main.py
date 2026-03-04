@@ -53,13 +53,6 @@ global address_BCE
 form_router = Router()
 
 
-def extract_tea_base(name: str) -> str:
-    text = re.sub(r"(?i)^\\s*чай\\s+", "", name).strip()
-    text = re.sub(r"\\s*\\([^)]*\\)\\s*$", "", text).strip()
-    text = re.sub(r"\\s{2,}", " ", text).strip()
-    return text or name
-
-
 async def show_product_card(message: types.Message, state: FSMContext, record, display_name: str = None):
     product_id = record[0]
     actual_name = record[1]
@@ -285,43 +278,41 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         cursor = sqlite_connection.cursor()
         cursor.execute(f"SELECT * FROM list_gribs WHERE topic=?", (topic,))
         records = cursor.fetchall()
-        tea_groups = {}
-        if topic == "Чай":
-            for record in records:
-                base = extract_tea_base(record[1])
-                tea_groups.setdefault(base, [])
-                tea_groups[base].append({
-                    "id": record[0],
-                    "name": record[1],
-                    "wt": record[2],
-                    "cash": record[3],
-                })
-
-        await state.update_data(current_topic=topic, tea_groups=tea_groups)
+        await state.update_data(current_topic=topic)
 
         kb = []
         if topic == "Чай":
-            bases = list(tea_groups.keys())
-            chunk_size = 8
-            chunks = [bases[i:i + chunk_size] for i in range(0, len(bases), chunk_size)]
+            items = [record[1] for record in records]
+            chunk_size = 18
+            chunks = [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
             first = True
             for chunk in chunks:
-                kb = [[types.KeyboardButton(text=base)] for base in chunk]
+                kb = [[types.KeyboardButton(text=item)] for item in chunk]
                 keyboard = inline_menu(kb)
                 if first:
                     await message.answer(
                         f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
-                        "<i>Выберите чай из списка ниже.</i>",
+                        "<i>Выберите товар из списка ниже.</i>",
                         reply_markup=keyboard,
                         parse_mode='html'
                     )
                     first = False
                 else:
                     await message.answer(
-                        "<i>Продолжение списка чаёв:</i>",
+                        "<i>Продолжение списка товаров:</i>",
                         reply_markup=keyboard,
                         parse_mode='html'
                     )
+            nav_kb = [
+                [types.KeyboardButton(text="Назад ⬅")],
+                [types.KeyboardButton(text="📦 Корзина")],
+            ]
+            nav_keyboard = inline_menu(nav_kb)
+            await message.answer(
+                "<i>Навигация:</i>",
+                reply_markup=nav_keyboard,
+                parse_mode='html'
+            )
             await state.set_state(ProfileStatesGroup.tovar)
             return
         else:
@@ -377,25 +368,6 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
     elif message.text == "📦 Корзина":
         await show_basket(message, state)
     else:
-        if data.get("current_topic") == "Чай":
-            tea_groups = data.get("tea_groups") or {}
-            if message.text in tea_groups:
-                variants = tea_groups.get(message.text, [])
-                kb = []
-                for item in variants:
-                    kb.append([types.KeyboardButton(text=item.get("wt") or "Вес", payload=f"tea_item:{item['id']}")])
-                kb.append([types.KeyboardButton(text="⬅ Назад")])
-                kb.append([types.KeyboardButton(text="📦 Корзина")])
-                keyboard = inline_menu(kb)
-                await message.answer(
-                    f"<b>{message.text}</b>\n\n<i>Выберите граммовку:</i>",
-                    reply_markup=keyboard,
-                    parse_mode='html'
-                )
-                await state.update_data(selected_tea_base=message.text)
-                await state.set_state(ProfileStatesGroup.tea_weight)
-                return
-
         global name
         display_name = message.text
         name = display_name
@@ -409,57 +381,6 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             await state.set_state(ProfileStatesGroup.insaid_tovar)
 
 
-@form_router.message(ProfileStatesGroup.tea_weight)
-async def tea_weight_handler(message: types.Message, state: FSMContext) -> None:
-    data = await state.get_data()
-
-    if message.text == "📦 Корзина":
-        await show_basket(message, state)
-        return
-
-    if message.text == "⬅ Назад":
-        tea_groups = data.get("tea_groups") or {}
-        bases = list(tea_groups.keys())
-        chunk_size = 8
-        chunks = [bases[i:i + chunk_size] for i in range(0, len(bases), chunk_size)]
-        first = True
-        for chunk in chunks:
-            kb = [[types.KeyboardButton(text=base)] for base in chunk]
-            keyboard = inline_menu(kb)
-            if first:
-                await message.answer(
-                    "<i>Выберите чай из списка ниже.</i>",
-                    reply_markup=keyboard,
-                    parse_mode='html'
-                )
-                first = False
-            else:
-                await message.answer(
-                    "<i>Продолжение списка чаёв:</i>",
-                    reply_markup=keyboard,
-                    parse_mode='html'
-                )
-        await state.set_state(ProfileStatesGroup.tovar)
-        return
-
-    if isinstance(message.text, str) and message.text.startswith("tea_item:"):
-        try:
-            product_id = int(message.text.split("tea_item:", 1)[1])
-        except ValueError:
-            await message.answer("Не удалось определить товар.")
-            return
-        sqlite_connection = sqlite3.connect(DATABASE_NAME)
-        cursor = sqlite_connection.cursor()
-        cursor.execute("SELECT * FROM list_gribs WHERE id=? ORDER BY id", (product_id,))
-        records = cursor.fetchall()
-        sqlite_connection.close()
-        if not records:
-            await message.answer("Товар не найден.")
-            return
-        record = records[0]
-        await show_product_card(message, state, record, display_name=record[1])
-        await state.set_state(ProfileStatesGroup.insaid_tovar)
-        return
 
 
 # Обработчик inline кнопок для изменения количества товара
