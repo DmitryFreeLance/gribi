@@ -98,6 +98,14 @@ class Dispatcher:
                     return
 
     async def _dispatch_callback(self, callback: CallbackQuery, state: FSMContext, update: Update):
+        if callback.data and isinstance(callback.data, str) and callback.data.startswith("menu:"):
+            callback.message.text = callback.data.split("menu:", 1)[1]
+            try:
+                await callback.answer()
+            except Exception:
+                pass
+            await self._dispatch_message(callback.message, state, Update(message=callback.message))
+            return
         for router in self.routers:
             for filters, handler in router.callback_handlers:
                 if await self._match_filters(filters, callback, state):

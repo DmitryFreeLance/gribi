@@ -1,5 +1,6 @@
 from maxbot import types
 from constant import get_basket_for_user, get_basket_info_product_by_id, create_order
+from ui import inline_menu
 from create_bot import ProfileStatesGroup, bot, admin_id
 
 
@@ -15,7 +16,7 @@ async def categories(message, answer_text):
          [types.KeyboardButton(text="🥥 Мази"), types.KeyboardButton(text="📑 Разное")],
         [types.KeyboardButton(text="⚜ Благовония")]
     ]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    keyboard = inline_menu(kb)
     await message.answer(answer_text, reply_markup=keyboard, parse_mode='html')
 
 
@@ -77,7 +78,7 @@ async def show_basket(message, state):
             [types.KeyboardButton(text=f"Вернуться в меню категорий ⬅"),
              types.KeyboardButton(text=f"☑ Оплатить корзину")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kd, resize_keyboard=True)
+        keyboard = inline_menu(kd)
         await message.answer(total_message, parse_mode='html', reply_markup=keyboard)
         await state.set_state(ProfileStatesGroup.basket_menu)
         return True

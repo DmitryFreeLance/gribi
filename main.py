@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from maxbot.fsm import FSMContext, StorageKey
 from maxbot import types, Dispatcher, Router, F
 from maxbot.filters import Command, CommandStart
+from ui import inline_menu
 from constant import emojis_to_topics, add_to_basket, get_basket_for_user, get_basket_info_product, \
     delete_basket_for_user, delete_product_for_user, add_to_address, get_address_for_user, search_address_in_user, \
     search_address_in_user_BCE, search_BCE, get_basket_info_all, create_database_accurately, get_database_accurately, \
@@ -55,7 +56,7 @@ form_router = Router()
 @form_router.message(CommandStart())
 async def command_start_handler(message: types.Message, state: FSMContext) -> None:
     kb = [[types.KeyboardButton(text="📃 Выбрать товар"), types.KeyboardButton(text="📲 Консультация")]]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    keyboard = inline_menu(kb)
     await message.answer(f"Здравствуй, {hbold(message.from_user.full_name)}!\n\n<i>Выберите действие</i>", parse_mode='html', reply_markup=keyboard)
     await state.set_state(ProfileStatesGroup.menu_start)
 
@@ -66,7 +67,7 @@ async def command_start_handler(message: types.Message, state: FSMContext) -> No
         kb = [
             [types.KeyboardButton(text="История заказов")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         all_orders = await get_basket_info_all()
         formatted_message = "Список заказов:\n\n"
         for order in all_orders:
@@ -83,7 +84,7 @@ async def command_start_handler(message: types.Message, state: FSMContext) -> No
     else:
         kb = [[types.KeyboardButton(text="📃 Выбрать товар"), types.KeyboardButton(text="📲 Консультация")]]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(f"Здравствуй, {hbold(message.from_user.full_name)}!\n\n<i>Выберите действие</i>",
                                parse_mode='html',
                                reply_markup=keyboard,
@@ -171,7 +172,7 @@ async def checking(message: types.Message, state: FSMContext) -> None:
     else:
         kb = [[types.KeyboardButton(text="📃 Выбрать товар"), types.KeyboardButton(text="📲 Консультация")]]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await bot.send_message(message.chat.id,
                                f"Здравствуй, {hbold(message.from_user.full_name)}!\n\n<i>Выберите действие</i>",
                                parse_mode='html',
@@ -206,7 +207,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             else:
                 kb.append([types.KeyboardButton(text=f"{record_current}")])
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
                              "<i>📑 Чтобы добавить товар в корзину, просто нажмите на него и проследуйте инструкции.\n\n</i>",
                              reply_markup=keyboard, parse_mode='html')
@@ -215,7 +216,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
     elif str(message.text) == 'Вернутся на главную ⬅':
         kb = [[types.KeyboardButton(text="📃 Выбрать товар"), types.KeyboardButton(text="📲 Консультация")]]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await bot.send_message(message.chat.id,
                                f"Выберите действие",
                                parse_mode='html',
@@ -453,7 +454,7 @@ async def input_product_count(callback: types.CallbackQuery, state: FSMContext):
           [types.KeyboardButton(text="4"), types.KeyboardButton(text="5"), types.KeyboardButton(text="6")],
           [types.KeyboardButton(text="7"), types.KeyboardButton(text="8"), types.KeyboardButton(text="9")],
           [types.KeyboardButton(text="10")]]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    keyboard = inline_menu(kb)
     
     await callback.message.answer("<b>Введите количество товара:</b>", reply_markup=keyboard, parse_mode='html')
     await callback.answer()
@@ -793,7 +794,7 @@ async def cancel_order_reason_handler(message: types.Message, state: FSMContext)
     
     # Возвращаем админа в главное меню после обработки причины отмены
     kb = [[types.KeyboardButton(text="📃 Выбрать товар"), types.KeyboardButton(text="📲 Консультация")]]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    keyboard = inline_menu(kb)
     await message.answer(
         f"Здравствуй, {hbold(message.from_user.full_name)}!\n\n<i>Выберите действие</i>",
         parse_mode='html',
@@ -977,7 +978,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text="⚜ Благовония")]
         ]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard, parse_mode='html')
         await state.set_state(ProfileStatesGroup.categories)
         await state.update_data(address='')
@@ -1035,7 +1036,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                 [types.KeyboardButton(text="🥥 Мази"), types.KeyboardButton(text="📑 Разное")],
                 [types.KeyboardButton(text="⚜ Благовония")]
             ]
-            keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+            keyboard = inline_menu(kb)
             await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard, parse_mode='html')
             await state.set_state(ProfileStatesGroup.categories)
             await clear_basket(message.from_user.id)
@@ -1045,7 +1046,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                 [types.KeyboardButton(text=f"Яндекс доставка 🚚")],
                 [types.KeyboardButton(text=f"Доставка СДЕК 🚛")],
             ]
-            keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+            keyboard = inline_menu(kb)
             await message.answer(
                 f"Выберите доставку\n\nДалее нужно будет указать ваши данные для доставки товара\n\nСпасибо, что выбираете нас!",
                 reply_markup=keyboard)
@@ -1109,7 +1110,7 @@ async def load_name_CDEK(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text="⚜ Благовония")]
         ]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard,
                                parse_mode='html')
         await state.set_state(ProfileStatesGroup.categories)
@@ -1169,7 +1170,7 @@ async def load_name_CDEK(message: types.Message, state: FSMContext) -> None:
                 [types.KeyboardButton(text="🥥 Мази"), types.KeyboardButton(text="📑 Разное")],
                 [types.KeyboardButton(text="⚜ Благовония")]
             ]
-            keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+            keyboard = inline_menu(kb)
             await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard, parse_mode='html')
             await state.set_state(ProfileStatesGroup.categories)
         else:
@@ -1178,7 +1179,7 @@ async def load_name_CDEK(message: types.Message, state: FSMContext) -> None:
                 [types.KeyboardButton(text=f"Яндекс доставка 🚚")],
                 [types.KeyboardButton(text=f"Доставка СДЕК 🚛")],
             ]
-            keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+            keyboard = inline_menu(kb)
             await message.answer(
                 f"Выберите доставку\n\nДалее нужно будет указать ваши данные для доставки товара\n\nСпасибо, что выбираете нас!",
                 reply_markup=keyboard)
@@ -1247,7 +1248,7 @@ async def load_name_many(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text=f"Оплатил ОЗОН карту")],
             [types.KeyboardButton(text=f"Отмена")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         output_code = await photo()
 
         await message.answer_photo(
@@ -1284,7 +1285,7 @@ async def load_name_many_CDEK(message: types.Message, state: FSMContext) -> None
             [types.KeyboardButton(text=f"Оплатил ОЗОН карту")],
             [types.KeyboardButton(text=f"Отмена")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         output_code = await photo()
         await message.answer_photo(
             BufferedInputFile(
@@ -1302,7 +1303,7 @@ async def load_name_many_CDEK(message: types.Message, state: FSMContext) -> None
             [types.KeyboardButton(text=f"Яндекс доставка 🚚")],
             [types.KeyboardButton(text=f"Доставка СДЕК 🚛")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(
             f"Выберите доставку\n\nДалее нужно будет указать ваши данные для доставки товара\n\nСпасибо, что выбираете нас!",
             reply_markup=keyboard)
@@ -1328,7 +1329,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                 kb.append([types.KeyboardButton(
                     text=f"{address}")])
 
-                keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+                keyboard = inline_menu(kb)
             await message.answer("Выберите данные, по которым хотите получить и оплатить далее товар",
                                  reply_markup=keyboard)
             await state.set_state(ProfileStatesGroup.pay_cart_many_address)
@@ -1352,7 +1353,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                         [types.KeyboardButton(text=f"Оплатил ОЗОН карту")],
                         [types.KeyboardButton(text=f"Отмена")],
                     ]
-                    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+                    keyboard = inline_menu(kb)
                     output_code = await photo()
                     await message.answer_photo(
                         BufferedInputFile(
@@ -1382,7 +1383,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                 kb.append([types.KeyboardButton(
                     text=f"{address}")])
 
-                keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+                keyboard = inline_menu(kb)
             await message.answer("Выберите данные, по которым хотите получить товар", reply_markup=keyboard)
             await state.set_state(ProfileStatesGroup.pay_cart_many_address_CDEK)
         else:
@@ -1405,7 +1406,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                         [types.KeyboardButton(text=f"Оплатил ОЗОН карту")],
                         [types.KeyboardButton(text=f"Отмена")],
                     ]
-                    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+                    keyboard = inline_menu(kb)
                     output_code = await photo()
                     await message.answer_photo(
                         BufferedInputFile(
@@ -1437,7 +1438,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text="Оплатить (Яндекс доставка)")],
             [types.KeyboardButton(text="Продолжить покупки")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(
             "Ваши данные сохранены. \n\nДалее у вас есть выбор, продолжить просмотр товаров и пополнять корзину\n(система запомнит ваши данные, который указали вы для доставки),\nлибо продолжить оплату",
             reply_markup=keyboard)
@@ -1506,7 +1507,7 @@ async def load_name_BCE(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text="⚜ Благовония")]
         ]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard,
                                parse_mode='html')
         await state.set_state(ProfileStatesGroup.categories)
@@ -1518,7 +1519,7 @@ async def load_name_BCE(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text=f"Яндекс доставка 🚚")],
             [types.KeyboardButton(text=f"Доставка СДЕК 🚛")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(
             f"Отмена!\nВыберите доставку\n\nДалее нужно будет указать ваши данные для доставки товара\n\nСпасибо, что выбираете нас!",
             reply_markup=keyboard)
@@ -1556,7 +1557,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text=f"Оплатил ОЗОН карту")],
             [types.KeyboardButton(text=f"Отмена")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         output_code = await photo()
         await message.answer_photo(
             BufferedInputFile(
@@ -1574,7 +1575,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text=f"Яндекс доставка 🚚")],
             [types.KeyboardButton(text=f"Доставка СДЕК 🚛")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         if message.text == 'Вернутся назад ⬅':
             await message.answer(
                 f"Выберите доставку\n\nДалее нужно будет указать ваши данные для доставки товара\n\nСпасибо, что выбираете нас!",
@@ -1598,7 +1599,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             [types.KeyboardButton(text="Оплатить (СДЕК)")],
             [types.KeyboardButton(text="Продолжить покупки")],
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(
             "Ваши данные сохранены. \n\nДалее у вас есть выбор, продолжить просмотр товаров и пополнять корзину\n(система запомнит ваши данные, который указали вы для доставки),\nлибо продолжить оплату",
             reply_markup=keyboard)
@@ -1617,7 +1618,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         kb = [
             [types.KeyboardButton(text="Вернутся на главную ⬅")]
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(
             "Введите персональные данные для доставки\nФИО\nЛичный адрес(чтобы мы доставили в ближайший пункт выдачи)\nИНДЕКС\nНомер телефона\n\n✅ Данные конфиденциальны ✅\nСтоимость доставки 250₽ \n\nПример: Иванов Иван Иванович\nАдрес: Пушкина 17/5\n4000504\n+79870542200\n\nНЕ ОБЯЗАТЕЛЬНО ЧЕРЕЗ СТРОЧУ",
             reply_markup=keyboard)
@@ -1632,7 +1633,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
              [types.KeyboardButton(text=f"Отмена")]
              ]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(text, parse_mode='html', reply_markup=keyboard)
         output_code = await photo()
         await message.answer_photo(
@@ -1650,7 +1651,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         kb = [
             [types.KeyboardButton(text="Вернутся на главную ⬅")]
         ]
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await message.answer(
             "Введите персональные данные для доставки\nФИО\nАдрес ближайшего СДЕК\nНомер телефона\n\n✅ Данные конфиденциальны ✅\nСтоимость доставки 300₽\n\nПример: Иванов Иван Иванович\nАдрес СДЭК: Пушкина 17/5\n+79870542200\n\nНЕ ОБЯЗАТЕЛЬНО ЧЕРЕЗ СТРОЧУ",
             reply_markup=keyboard)
@@ -1666,7 +1667,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                 kb.append([types.KeyboardButton(
                     text=f"{address[0]}")])
 
-                keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+                keyboard = inline_menu(kb)
             await message.answer("Выберите данные, по которым хотите получить товар", reply_markup=keyboard)
             await state.set_state(ProfileStatesGroup.address_processing_BCE)
         else:
@@ -1675,7 +1676,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                 [types.KeyboardButton(text=f"Яндекс доставка 🚚")],
                 [types.KeyboardButton(text=f"Доставка СДЕК 🚛")],
             ]
-            keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+            keyboard = inline_menu(kb)
             await message.answer(
                 f"Выберите доставку\n\nДалее нужно будет указать ваши данные для доставки товара\n\nСпасибо, что выбираете нас!",
                 reply_markup=keyboard)
@@ -1742,7 +1743,7 @@ async def zabrat_iz_magaziana(message: types.Message, state: FSMContext) -> None
             [types.KeyboardButton(text="⚜ Благовония")]
         ]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard,
                                parse_mode='html')
         await state.set_state(ProfileStatesGroup.categories)
@@ -1797,7 +1798,7 @@ async def zabrat_iz_magaziana(message: types.Message, state: FSMContext) -> None
             [types.KeyboardButton(text="⚜ Благовония")]
         ]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard, parse_mode='html')
         await state.set_state(ProfileStatesGroup.categories)
         await state.update_data(address='')
@@ -1815,7 +1816,7 @@ async def zabrat_iz_magaziana(message: types.Message, state: FSMContext) -> None
             [types.KeyboardButton(text="⚜ Благовония")]
         ]
 
-        keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+        keyboard = inline_menu(kb)
         await bot.send_message(message.chat.id, text="<b>Выберите категорию</b>", reply_markup=keyboard, parse_mode='html')
         await state.set_state(ProfileStatesGroup.categories)
 
@@ -1839,7 +1840,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                 [types.KeyboardButton(text=f"Яндекс доставка 🚚")],
                 [types.KeyboardButton(text=f"Доставка СДЕК 🚛")],
             ]
-            keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+            keyboard = inline_menu(kb)
             await message.answer(
                 f"Выберите доставку\n\nДалее нужно будет указать ваши данные для доставки товара\n\nСпасибо, что выбираете нас!",
                 reply_markup=keyboard)
@@ -1898,7 +1899,7 @@ async def restart_bot_callback(callback: types.CallbackQuery, state: FSMContext)
     
     # Показываем главное меню
     kb = [[types.KeyboardButton(text="📃 Выбрать товар"), types.KeyboardButton(text="📲 Консультация")]]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    keyboard = inline_menu(kb)
     
     await callback.message.edit_text(
         f"✅ <b>Бот перезапущен!</b>\n\n"
