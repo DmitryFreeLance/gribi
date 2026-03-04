@@ -69,6 +69,9 @@ class Dispatcher:
             if not message:
                 return
             user = self._user_from_sender(callback.get("user") or {})
+            # Ensure callback message is tied to the user who clicked.
+            message.chat.id = user.id
+            message.from_user = user
             cb = CallbackQuery(
                 bot=bot,
                 callback_id=callback.get("callback_id"),
@@ -76,7 +79,7 @@ class Dispatcher:
                 message=message,
                 data=callback.get("payload"),
             )
-            state = FSMContext(storage=self.storage, key=StorageKey(chat_id=message.chat.id, user_id=user.id, bot_id=None))
+            state = FSMContext(storage=self.storage, key=StorageKey(chat_id=user.id, user_id=user.id, bot_id=None))
             update = Update(callback_query=cb)
             await self._dispatch_callback(cb, state, update)
         elif update_type == "bot_started":

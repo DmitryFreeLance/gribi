@@ -243,7 +243,7 @@ class MaxBot:
             return await resp.json()
 
     async def send_photo(self, chat_id: Optional[int] = None, photo=None, caption: Optional[str] = None,
-                         reply_markup=None, parse_mode: Optional[str] = None):
+                         reply_markup=None, parse_mode: Optional[str] = None, user_id: Optional[int] = None):
         if isinstance(photo, types.BufferedInputFile):
             file_bytes = photo.data
             filename = photo.filename
@@ -266,6 +266,7 @@ class MaxBot:
         }
         return await self.send_message(
             chat_id=chat_id,
+            user_id=user_id,
             text=caption,
             reply_markup=reply_markup,
             parse_mode=parse_mode,

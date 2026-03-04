@@ -70,7 +70,7 @@ class Message:
 
     async def answer(self, text: str, reply_markup=None, parse_mode: Optional[str] = None):
         return await self.bot.send_message(
-            chat_id=self.chat.id,
+            user_id=self.from_user.id,
             text=text,
             reply_markup=reply_markup,
             parse_mode=parse_mode,
@@ -78,11 +78,12 @@ class Message:
 
     async def answer_photo(self, photo, caption: Optional[str] = None, reply_markup=None, parse_mode: Optional[str] = None):
         return await self.bot.send_photo(
-            chat_id=self.chat.id,
+            chat_id=None,
             photo=photo,
             caption=caption,
             reply_markup=reply_markup,
             parse_mode=parse_mode,
+            user_id=self.from_user.id,
         )
 
     async def delete(self):
