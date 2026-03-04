@@ -164,8 +164,8 @@ class Dispatcher:
                         text = payload
                         break
         user = self._user_from_sender(sender)
-        chat_id = recipient.get("chat_id") or recipient.get("user_id") or user.id
-        chat = Chat(id=int(chat_id))
+        # For private chats, reply should go to sender user_id.
+        chat = Chat(id=int(user.id))
         return Message(
             bot=bot,
             message_id=str(body.get("mid")),
