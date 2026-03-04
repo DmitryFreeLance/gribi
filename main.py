@@ -196,11 +196,16 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         cursor = sqlite_connection.cursor()
         cursor.execute(f"SELECT * FROM list_gribs WHERE topic=?", (topic,))
         records = cursor.fetchall()
+        def _tea_label(text: str) -> str:
+            text = re.sub(r"(?i)\\bчай\\b\\s*", "", text)
+            text = re.sub(r"\\s{2,}", " ", text)
+            return text.strip() or text
+
         name_map = {}
         if topic == "Чай":
             for record in records:
                 original_name = record[1]
-                display_name = re.sub(r"(?i)^чай\\s+", "", original_name).strip()
+                display_name = _tea_label(original_name)
                 if not display_name:
                     display_name = original_name
                 name_map[display_name] = original_name
@@ -214,11 +219,11 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         for i in range(0, len(records), 2):
             record_current = records[i][1]
             if topic == "Чай" and name_map:
-                record_current = re.sub(r"(?i)^чай\\s+", "", record_current).strip() or record_current
+                record_current = _tea_label(record_current)
             if i + 1 < len(records):  # Проверяем, что следующая запись существует
                 record_next = records[i + 1][1]
                 if topic == "Чай" and name_map:
-                    record_next = re.sub(r"(?i)^чай\\s+", "", record_next).strip() or record_next
+                    record_next = _tea_label(record_next)
                 kb.append([types.KeyboardButton(text=f"{record_current}"),
                            types.KeyboardButton(text=f"{record_next}")])
             else:
