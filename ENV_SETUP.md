@@ -44,6 +44,7 @@ SHOP_HOURS=11:00-19:00
 # Database Configuration
 DATABASE_NAME=sqlite_python.db
 FSM_STORAGE_DB=fsm_storage_db.sqlite
+# DEFAULT_DB_PATH=sqlite_python.db
 
 # Delivery Prices
 DELIVERY_YANDEX_PRICE=250
@@ -59,6 +60,7 @@ DELIVERY_CDEK_PRICE=300
 - `MAX_USE_QUERY_TOKEN` - включить передачу токена через query-параметр (для старого botapi домена)
 - `MAX_SSL_VERIFY` - отключить проверку SSL (только если у вас корпоративный прокси с подменой сертификата)
 - `ADMIN_ID` - ваш ID в Max (можно несколько через запятую)
+- `DEFAULT_DB_PATH` - путь к шаблонной БД для первичной инициализации (если DATABASE_NAME отсутствует)
 - Остальные значения настройте по необходимости
 
 ## Важно!

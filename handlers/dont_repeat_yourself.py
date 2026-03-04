@@ -193,7 +193,7 @@ async def send_order_to_admins(
                     pass
             print(f"📤 Попытка отправить заказ админу с ID: {chat_id}")
             sent_message = await bot.send_message(
-                chat_id=chat_id,
+                user_id=chat_id,
                 text=order_text,
                 parse_mode='HTML',
                 reply_markup=inline_keyboard

@@ -14,7 +14,7 @@ from ui import inline_menu
 from constant import emojis_to_topics, add_to_basket, get_basket_for_user, get_basket_info_product, \
     delete_basket_for_user, delete_product_for_user, add_to_address, get_address_for_user, search_address_in_user, \
     search_address_in_user_BCE, search_BCE, get_basket_info_all, create_database_accurately, get_database_accurately, \
-    add_order_accurately, clear_basket, get_basket_info_product_by_id, create_order, get_order_by_id, update_order_status
+    add_order_accurately, clear_basket, get_basket_info_product_by_id, create_order, get_order_by_id, update_order_status, ensure_database
 
 from create_bot import photo
 
@@ -161,9 +161,9 @@ async def checking(message: types.Message, state: FSMContext) -> None:
             korzina_str = "\n".join(korzina)
 
             if Yes_and_No == 'No':  # Отправляем уведомление, что деньги не поступили на счет
-                await bot.send_message(chat_id=number_and_app[0], text=f"<b>Ваш заказ\n\nНЕ ПОДТВЕРЖДЕН</b>", parse_mode='html')
+                await bot.send_message(user_id=int(number_and_app[0]), text=f"<b>Ваш заказ\n\nНЕ ПОДТВЕРЖДЕН</b>", parse_mode='html')
             elif Yes_and_No == 'Yes':  # Отправляем уведомление, что деньги поступили на счет
-                await bot.send_message(chat_id=number_and_app[0], text=f"<b>Ваш заказ\n\nПОДТВЕРЖДЕН</b>", parse_mode='html')
+                await bot.send_message(user_id=int(number_and_app[0]), text=f"<b>Ваш заказ\n\nПОДТВЕРЖДЕН</b>", parse_mode='html')
 
                 for product_id, product, count in user_products:
                     await add_order_accurately(ID_client=id_user, count=count, product=product, accurately=True)
@@ -594,7 +594,7 @@ async def confirm_order_callback(callback: types.CallbackQuery, state: FSMContex
         try:
             order_id_display = f"#{order_id}" if isinstance(order_id, int) else order_id_str
             await bot.send_message(
-                chat_id=user_id,
+                user_id=user_id,
                 text=(
                     f"✅ <b>Ваш заказ подтвержден!</b>\n\n"
                     f"🆔 ID заказа: <code>{order_id_display}</code>\n\n"
@@ -695,7 +695,7 @@ async def cancel_order_callback(callback: types.CallbackQuery, state: FSMContext
     try:
         order_id_display = f"#{order_id}" if isinstance(order_id, int) else order_id
         await bot.send_message(
-            chat_id=admin_chat_id,
+            user_id=admin_chat_id,
             text=(
                 f"❌ <b>Отмена заказа</b>\n\n"
                 f"🆔 ID заказа: <code>{order_id_display}</code>\n"
@@ -771,7 +771,7 @@ async def cancel_order_reason_handler(message: types.Message, state: FSMContext)
         try:
             order_id_display = f"#{order_id}" if isinstance(order_id, int) else order_id
             await bot.send_message(
-                chat_id=user_id,
+                user_id=user_id,
                 text=(
                     f"❌ <b>Ваш заказ отменен</b>\n\n"
                     f"🆔 ID заказа: <code>{order_id_display}</code>\n"
@@ -1920,6 +1920,7 @@ async def restart_bot_callback(callback: types.CallbackQuery, state: FSMContext)
 
 
 async def main():
+    await ensure_database()
     # Проверяем доступность чатов при старте
     from create_bot import admin_id
     
@@ -1939,7 +1940,7 @@ async def main():
                     pass
             try:
                 test_msg = await bot.send_message(
-                    chat_id=admin_chat_id,
+                    user_id=admin_chat_id,
                     text="✅ Бот запущен и готов к работе!"
                 )
                 await bot.delete_message(chat_id=admin_chat_id, message_id=test_msg.message_id)

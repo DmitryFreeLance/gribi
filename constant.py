@@ -1,6 +1,8 @@
 # Словарь для соответствия текста сообщения эмодзи и названий товаров в базе данных
 import sqlite3
 import os
+import shutil
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Загружаем переменные окружения
@@ -8,6 +10,55 @@ load_dotenv()
 
 # Получаем имя базы данных из переменных окружения
 DATABASE_NAME = os.getenv('DATABASE_NAME', 'sqlite_python.db')
+DEFAULT_DB_PATH = os.getenv('DEFAULT_DB_PATH', 'sqlite_python.db')
+
+
+def _ensure_dir(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _create_list_gribs_table(db_path: Path) -> None:
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS list_gribs
+            (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                wt TEXT NOT NULL,
+                cash INT NOT NULL,
+                topic TEXT NOT NULL,
+                photo TEXT NULL,
+                description TEXT NULL
+            )
+        ''')
+        conn.commit()
+    finally:
+        conn.close()
+
+
+async def ensure_database():
+    '''Ensure DB file exists and core tables are created.
+
+    If DATABASE_NAME does not exist, try to seed it from DEFAULT_DB_PATH.
+    '''
+    db_path = Path(DATABASE_NAME)
+    if not db_path.exists() or db_path.stat().st_size == 0:
+        default_path = Path(DEFAULT_DB_PATH)
+        if default_path.exists() and default_path.resolve() != db_path.resolve():
+            _ensure_dir(db_path)
+            shutil.copyfile(str(default_path), str(db_path))
+            print(f"✅ База данных скопирована из {default_path} в {db_path}")
+        else:
+            _ensure_dir(db_path)
+            _create_list_gribs_table(db_path)
+            print(f"✅ Создана новая база данных {db_path}")
+    else:
+        _create_list_gribs_table(db_path)
+
+    # Гарантируем наличие служебных таблиц
+    await create_database_accurately()
+    await create_orders_table()
 
 emojis_to_topics = {
     "🌿 Рапэ племенное": "Рапэ",

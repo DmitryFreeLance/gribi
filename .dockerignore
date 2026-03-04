@@ -6,6 +6,7 @@ __pycache__
 venv
 .env
 *.sqlite
+!sqlite_python.db
 *.db
 *.log
 .git
