@@ -8,7 +8,8 @@ from . import types
 class MaxBot:
     def __init__(self, token: str, base_url: str = "https://platform-api.max.ru", api_version: Optional[str] = None,
                  session: Optional[aiohttp.ClientSession] = None, proxy_url: Optional[str] = None,
-                 use_query_token: bool = False, ssl_verify: bool = True, trust_env: bool = True):
+                 use_query_token: bool = False, ssl_verify: bool = True, trust_env: bool = True,
+                 force_user_id: bool = True):
         self.token = token
         self.base_url = base_url.rstrip("/")
         self.api_version = api_version
@@ -16,6 +17,7 @@ class MaxBot:
         self.use_query_token = use_query_token
         self.ssl_verify = ssl_verify
         self.trust_env = trust_env
+        self.force_user_id = force_user_id
         self.session = session
 
     async def close(self):
@@ -178,7 +180,9 @@ class MaxBot:
         if final_attachments:
             body["attachments"] = final_attachments
         params: Dict[str, Any] = {}
-        if chat_id is not None:
+        if user_id is None and chat_id is not None and self.force_user_id:
+            params["user_id"] = chat_id
+        elif chat_id is not None:
             params["chat_id"] = chat_id
         elif user_id is not None:
             params["user_id"] = user_id

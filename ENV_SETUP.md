@@ -26,6 +26,7 @@ MAX_BOT_TOKEN=your_max_bot_token_here
 MAX_API_BASE_URL=https://platform-api.max.ru
 # MAX_USE_QUERY_TOKEN=1
 # MAX_SSL_VERIFY=0
+# MAX_FORCE_USER_ID=1
 # MAX_API_VERSION=your_api_version_if_needed
 ADMIN_ID=your_admin_id_here
 
@@ -59,6 +60,7 @@ DELIVERY_CDEK_PRICE=300
 - `MAX_API_BASE_URL` - базовый URL Max Bot API (если используете другой домен)
 - `MAX_USE_QUERY_TOKEN` - включить передачу токена через query-параметр (для старого botapi домена)
 - `MAX_SSL_VERIFY` - отключить проверку SSL (только если у вас корпоративный прокси с подменой сертификата)
+- `MAX_FORCE_USER_ID` - отправлять личные сообщения через user_id даже если передан chat_id
 - `ADMIN_ID` - ваш ID в Max (можно несколько через запятую)
 - `DEFAULT_DB_PATH` - путь к шаблонной БД для первичной инициализации (если DATABASE_NAME отсутствует)
 - Остальные значения настройте по необходимости

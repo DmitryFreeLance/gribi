@@ -55,6 +55,7 @@ form_router = Router()
 # старт
 @form_router.message(CommandStart())
 async def command_start_handler(message: types.Message, state: FSMContext) -> None:
+    print(f"USER_ID: {message.from_user.id} USERNAME: {message.from_user.username}")
     kb = [[types.KeyboardButton(text="📃 Выбрать товар"), types.KeyboardButton(text="📲 Консультация")]]
     keyboard = inline_menu(kb)
     await message.answer(f"Здравствуй, {hbold(message.from_user.full_name)}!\n\n<i>Выберите действие</i>", parse_mode='html', reply_markup=keyboard)

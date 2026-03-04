@@ -24,6 +24,7 @@ API_BASE_URL = os.getenv('MAX_API_BASE_URL', 'https://platform-api.max.ru')
 API_VERSION = os.getenv('MAX_API_VERSION')
 USE_QUERY_TOKEN = os.getenv('MAX_USE_QUERY_TOKEN', '').lower() in ('1', 'true', 'yes')
 SSL_VERIFY = os.getenv('MAX_SSL_VERIFY', '').lower() not in ('0', 'false', 'no')
+FORCE_USER_ID = os.getenv('MAX_FORCE_USER_ID', '').lower() not in ('0', 'false', 'no')
 
 bot = MaxBot(
     token=TOKEN,
@@ -31,7 +32,8 @@ bot = MaxBot(
     api_version=API_VERSION,
     proxy_url=PROXY_URL,
     use_query_token=USE_QUERY_TOKEN,
-    ssl_verify=SSL_VERIFY
+    ssl_verify=SSL_VERIFY,
+    force_user_id=FORCE_USER_ID
 )
 proxy_display = PROXY_URL.split('@')[-1] if PROXY_URL and '@' in PROXY_URL else PROXY_URL
 if PROXY_URL:
