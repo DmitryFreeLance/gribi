@@ -53,6 +53,20 @@ global address_BCE
 form_router = Router()
 
 
+def build_product_controls(current_count: int):
+    kb = [
+        [
+            types.KeyboardButton(text="➖"),
+            types.KeyboardButton(text=f"Колич.: {current_count}"),
+            types.KeyboardButton(text="➕"),
+        ],
+        [types.KeyboardButton(text="📝 Ввести количество")],
+        [types.KeyboardButton(text="⬅ Назад")],
+        [types.KeyboardButton(text="📦 Корзина")],
+    ]
+    return inline_menu(kb)
+
+
 # старт
 @form_router.message(CommandStart())
 async def command_start_handler(message: types.Message, state: FSMContext) -> None:
@@ -307,17 +321,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                     current_count = count
                     break
 
-            # Создаем inline кнопки
-            inline_kb = [
-                [
-                    types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-                    types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
-                    types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
-                ],
-                [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
-                [types.InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_categories")]
-            ]
-            inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+            keyboard = build_product_controls(current_count)
 
             description = records[0][6] if records[0][6] is not None else ''
             max_caption_length = 1024
@@ -344,13 +348,13 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                     ),
                     caption=caption,
                     parse_mode='HTML',
-                    reply_markup=inline_keyboard
+                    reply_markup=keyboard
                 )
             else:
                 await message.answer(
                     caption,
                     parse_mode='HTML',
-                    reply_markup=inline_keyboard
+                    reply_markup=keyboard
                 )
             await state.set_state(ProfileStatesGroup.insaid_tovar)
 
@@ -381,29 +385,12 @@ async def increase_product_count(callback: types.CallbackQuery, state: FSMContex
             current_count = count
             break
     
-    # Обновляем кнопки
-    inline_kb = [
-        [
-            types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-            types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
-            types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
-        ],
-        [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
-        [types.InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_categories")]
-    ]
-    inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
-    
+    keyboard = build_product_controls(current_count)
+    await callback.message.answer(f"Добавлено! Количество: {current_count}", reply_markup=keyboard)
     try:
-        await callback.message.edit_reply_markup(reply_markup=inline_keyboard)
-        await callback.answer(f"Добавлено! Количество: {current_count}")
-    except Exception as e:
-        error_msg = str(e).lower()
-        # Игнорируем ошибку "message is not modified" - это означает, что сообщение уже актуально
-        if "message is not modified" in error_msg or "not modified" in error_msg:
-            await callback.answer(f"Количество: {current_count}")
-        else:
-            await callback.answer("Обновлено!")
-            print(f"Ошибка при обновлении кнопок (increase): {e}")
+        await callback.answer(f"Количество: {current_count}")
+    except Exception:
+        pass
 
 
 @form_router.callback_query(F.data.startswith("decrease_"))
@@ -433,35 +420,18 @@ async def decrease_product_count(callback: types.CallbackQuery, state: FSMContex
             new_count = count
             break
     
-    # Обновляем кнопки
-    inline_kb = [
-        [
-            types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-            types.InlineKeyboardButton(text=f"Колич.: {new_count}", callback_data="count_display"),
-            types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
-        ],
-        [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
-        [types.InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_categories")]
-    ]
-    inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
-    
+    keyboard = build_product_controls(new_count)
+    if new_count > 0:
+        await callback.message.answer(f"Уменьшено! Количество: {new_count}", reply_markup=keyboard)
+    else:
+        await callback.message.answer("Товар удален из корзины.", reply_markup=keyboard)
     try:
-        await callback.message.edit_reply_markup(reply_markup=inline_keyboard)
         if new_count > 0:
-            await callback.answer(f"Уменьшено! Количество: {new_count}")
+            await callback.answer(f"Количество: {new_count}")
         else:
             await callback.answer("Товар удален из корзины")
-    except Exception as e:
-        error_msg = str(e).lower()
-        # Игнорируем ошибку "message is not modified" - это означает, что сообщение уже актуально
-        if "message is not modified" in error_msg or "not modified" in error_msg:
-            if new_count > 0:
-                await callback.answer(f"Количество: {new_count}")
-            else:
-                await callback.answer("Товар удален из корзины")
-        else:
-            await callback.answer("Обновлено!")
-            print(f"Ошибка при обновлении кнопок (decrease): {e}")
+    except Exception:
+        pass
 
 
 @form_router.callback_query(F.data.startswith("input_count_"))
@@ -830,17 +800,87 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
     await state.update_data(name=message.text)
     data = await state.get_data()
 
+    if message.text == "➕":
+        product_id = data.get("product_id")
+        if not product_id:
+            await message.answer("Сначала выберите товар.")
+            return
+        product_info = await get_basket_info_product_by_id(product_id)
+        if not product_info or len(product_info) == 0:
+            await message.answer("Товар не найден.")
+            return
+        product_name = product_info[0][1]
+        await add_to_basket(user_id=message.from_user.id, product_id=product_id, product=product_name, counnt=1)
+        user_products = await get_basket_for_user(message.from_user.id)
+        current_count = 0
+        for prod_id, _, count in user_products:
+            if prod_id == product_id:
+                current_count = count
+                break
+        keyboard = build_product_controls(current_count)
+        await message.answer(f"Добавлено! Количество: {current_count}", reply_markup=keyboard)
+        return
+
+    if message.text == "➖":
+        product_id = data.get("product_id")
+        if not product_id:
+            await message.answer("Сначала выберите товар.")
+            return
+        user_products = await get_basket_for_user(message.from_user.id)
+        current_count = 0
+        for prod_id, _, count in user_products:
+            if prod_id == product_id:
+                current_count = count
+                break
+        if current_count <= 0:
+            await message.answer("Товар отсутствует в корзине.")
+            return
+        await delete_product_for_user(user_id=message.from_user.id, product_id=product_id, counnt=1)
+        user_products = await get_basket_for_user(message.from_user.id)
+        new_count = 0
+        for prod_id, _, count in user_products:
+            if prod_id == product_id:
+                new_count = count
+                break
+        keyboard = build_product_controls(new_count)
+        if new_count > 0:
+            await message.answer(f"Уменьшено! Количество: {new_count}", reply_markup=keyboard)
+        else:
+            await message.answer("Товар удален из корзины.", reply_markup=keyboard)
+        return
+
+    if message.text == "📝 Ввести количество":
+        product_id = data.get("product_id")
+        if not product_id:
+            await message.answer("Сначала выберите товар.")
+            return
+        kb = [[types.KeyboardButton(text="Главное меню ⬅")],
+              [types.KeyboardButton(text="1"), types.KeyboardButton(text="2"), types.KeyboardButton(text="3")],
+              [types.KeyboardButton(text="4"), types.KeyboardButton(text="5"), types.KeyboardButton(text="6")],
+              [types.KeyboardButton(text="7"), types.KeyboardButton(text="8"), types.KeyboardButton(text="9")],
+              [types.KeyboardButton(text="10")]]
+        keyboard = inline_menu(kb)
+        await message.answer("<b>Введите количество товара:</b>", reply_markup=keyboard, parse_mode='html')
+        await state.set_state(ProfileStatesGroup.count_insaid_tovar)
+        return
+
+    if message.text.startswith("Колич.:"):
+        return
+
     if message.text == "📦 Корзина":
         await show_basket(message, state)
+        return
 
     # Обработка текстовых сообщений (для обратной совместимости)
-    if message.text == "Назад ⬅":
+    if message.text == "Назад ⬅" or message.text == "⬅ Назад":
         await categories(message, answer_text="<b>Выберите категорию</b>")
         await state.set_state(ProfileStatesGroup.categories)
+        return
 
     if message.text == "Вернуть в меню категорий ⬅":
         await categories(message, answer_text="<b>Выберите категорию</b>")
         await state.set_state(ProfileStatesGroup.categories)
+        return
     
     # Обработка нажатий на товары из меню
     else:
@@ -895,17 +935,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                     current_count = count
                     break
 
-            # Создаем inline кнопки
-            inline_kb = [
-                [
-                    types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-                    types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
-                    types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
-                ],
-                [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
-                [types.InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_categories")]
-            ]
-            inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+            keyboard = build_product_controls(current_count)
 
             description = records[0][6] if records[0][6] is not None else ''
             max_caption_length = 1024
@@ -931,13 +961,13 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                     ),
                     caption=caption,
                     parse_mode='HTML',
-                    reply_markup=inline_keyboard
+                    reply_markup=keyboard
                 )
             else:
                 await message.answer(
                     caption,
                     parse_mode='HTML',
-                    reply_markup=inline_keyboard
+                    reply_markup=keyboard
                 )
             
             sqlite_connection.close()
@@ -1799,6 +1829,25 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         await categories(message, answer_text="Ваша корзина успешно очищена")
         await state.set_state(ProfileStatesGroup.categories)
 
+    elif message.text.startswith("🗑 Удалить "):
+        try:
+            product_id = int(message.text.split()[-1])
+        except ValueError:
+            await message.answer("Не удалось определить товар для удаления.")
+            return
+        user_products = await get_basket_for_user(message.from_user.id)
+        current_count = 0
+        for prod_id, _, count in user_products:
+            if prod_id == product_id:
+                current_count = count
+                break
+        if current_count <= 0:
+            await message.answer("Товар не найден в корзине.")
+            return
+        await delete_product_for_user(user_id=message.from_user.id, product_id=product_id, counnt=current_count)
+        await show_basket(message, state)
+        return
+
     elif message.text == "☑ Оплатить корзину":
         user_products = await get_basket_for_user(message.from_user.id)
         if len(user_products) > 0:
@@ -1838,52 +1887,33 @@ async def home(message: types.Message, state: FSMContext):
 # Обработчик неизвестных сообщений и ошибок
 async def handle_unknown_message(message: types.Message, state: FSMContext = None):
     """Обрабатывает неизвестные сообщения и ошибки"""
-    # Создаем inline кнопку для перезапуска бота
-    inline_kb = [
-        [
-            types.InlineKeyboardButton(
-                text="🔄 Перезапустить бота",
-                callback_data="restart_bot"
-            )
-        ]
-    ]
-    inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    kb = [[types.KeyboardButton(text="🔄 Перезапустить бота")]]
+    keyboard = inline_menu(kb)
     
     await message.answer(
         "❌ <b>Не понял вас</b>\n\n"
         "Пожалуйста, перезапустите бота, чтобы вернуться в главное меню.",
         parse_mode='HTML',
-        reply_markup=inline_keyboard
+        reply_markup=keyboard
     )
 
 
-# Обработчик callback для перезапуска бота
-@form_router.callback_query(F.data == "restart_bot")
-async def restart_bot_callback(callback: types.CallbackQuery, state: FSMContext):
+# Обработчик перезапуска бота (не inline)
+@form_router.message(F.text == "🔄 Перезапустить бота")
+async def restart_bot_message(message: types.Message, state: FSMContext):
     """Обработчик перезапуска бота - сбрасывает состояние и показывает главное меню"""
-    # Очищаем состояние
     await state.clear()
-    
-    # Показываем главное меню
     kb = [[types.KeyboardButton(text="📃 Выбрать товар"), types.KeyboardButton(text="📲 Консультация")]]
     keyboard = inline_menu(kb)
-    
-    await callback.message.edit_text(
+    await message.answer(
         f"✅ <b>Бот перезапущен!</b>\n\n"
-        f"Здравствуй, {hbold(callback.from_user.full_name)}!\n\n"
+        f"Здравствуй, {hbold(message.from_user.full_name)}!\n\n"
         f"<i>Выберите действие</i>",
-        parse_mode='HTML'
-    )
-    
-    await callback.message.answer(
-        f"Здравствуй, {hbold(callback.from_user.full_name)}!\n\n<i>Выберите действие</i>",
         parse_mode='html',
         reply_markup=keyboard
     )
-    
     await state.set_state(ProfileStatesGroup.menu_start)
-    await callback.answer("Бот перезапущен!", show_alert=False)
-    print(f"✅ Бот перезапущен для пользователя {callback.from_user.id}")
+    print(f"✅ Бот перезапущен для пользователя {message.from_user.id}")
 
 
 async def main():
