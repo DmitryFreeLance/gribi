@@ -7,6 +7,7 @@ import asyncio
 import sys
 import os
 from dotenv import load_dotenv
+import re
 from maxbot.fsm import FSMContext, StorageKey
 from maxbot import types, Dispatcher, Router, F
 from maxbot.filters import Command, CommandStart
@@ -195,14 +196,29 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         cursor = sqlite_connection.cursor()
         cursor.execute(f"SELECT * FROM list_gribs WHERE topic=?", (topic,))
         records = cursor.fetchall()
+        name_map = {}
+        if topic == "Чай":
+            for record in records:
+                original_name = record[1]
+                display_name = re.sub(r"(?i)^чай\\s+", "", original_name).strip()
+                if not display_name:
+                    display_name = original_name
+                name_map[display_name] = original_name
+
+        await state.update_data(current_topic=topic, name_map=name_map)
+
         kb = [
             [types.KeyboardButton(text="Назад ⬅")],
             [types.KeyboardButton(text="📦 Корзина")],
         ]
         for i in range(0, len(records), 2):
             record_current = records[i][1]
+            if topic == "Чай" and name_map:
+                record_current = re.sub(r"(?i)^чай\\s+", "", record_current).strip() or record_current
             if i + 1 < len(records):  # Проверяем, что следующая запись существует
                 record_next = records[i + 1][1]
+                if topic == "Чай" and name_map:
+                    record_next = re.sub(r"(?i)^чай\\s+", "", record_next).strip() or record_next
                 kb.append([types.KeyboardButton(text=f"{record_current}"),
                            types.KeyboardButton(text=f"{record_next}")])
             else:
@@ -245,10 +261,13 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         await show_basket(message, state)
     else:
         global name
-        name = message.text
+        display_name = message.text
+        name_map = data.get("name_map") or {}
+        actual_name = name_map.get(display_name, display_name)
+        name = actual_name
         sqlite_connection = sqlite3.connect(DATABASE_NAME)
         cursor = sqlite_connection.cursor()
-        cursor.execute("SELECT * FROM list_gribs WHERE name=? ORDER BY id", (name,))
+        cursor.execute("SELECT * FROM list_gribs WHERE name=? ORDER BY id", (actual_name,))
         records = cursor.fetchall()
         filename_photo = records[0][5]
         
@@ -278,7 +297,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         # Отправка изображения через бота
         if len(records) > 0:
             product_id = records[0][0]  # ID товара из базы данных
-            await state.update_data(product_id=product_id, product_name=name)
+            await state.update_data(product_id=product_id, product_name=actual_name)
             
             # Проверяем текущее количество товара в корзине
             user_products = await get_basket_for_user(message.from_user.id)
@@ -303,7 +322,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             description = records[0][6] if records[0][6] is not None else ''
             max_caption_length = 1024
             base_caption = (
-                f"<b>Вы выбрали товар: {name}\n\n</b>"
+                f"<b>Вы выбрали товар: {display_name}\n\n</b>"
                 f"<b>Дополнительная информация о товаре:\n</b>"
                 f"<b>Вес:</b> <code>{records[0][2]}⚖\n</code>"
                 f"<b>Цена:</b> <code>{records[0][3]}💵\n</code>"
@@ -826,10 +845,13 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
     # Обработка нажатий на товары из меню
     else:
         global name
-        name = message.text
+        display_name = message.text
+        name_map = data.get("name_map") or {}
+        actual_name = name_map.get(display_name, display_name)
+        name = actual_name
         sqlite_connection = sqlite3.connect(DATABASE_NAME)
         cursor = sqlite_connection.cursor()
-        cursor.execute("SELECT * FROM list_gribs WHERE name=? ORDER BY id", (name,))
+        cursor.execute("SELECT * FROM list_gribs WHERE name=? ORDER BY id", (actual_name,))
         records = cursor.fetchall()
         
         if len(records) == 0:
@@ -863,7 +885,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         # Отправка изображения через бота
         if len(records) > 0:
             product_id = records[0][0]  # ID товара из базы данных
-            await state.update_data(product_id=product_id, product_name=name)
+            await state.update_data(product_id=product_id, product_name=actual_name)
             
             # Проверяем текущее количество товара в корзине
             user_products = await get_basket_for_user(message.from_user.id)
@@ -888,7 +910,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
             description = records[0][6] if records[0][6] is not None else ''
             max_caption_length = 1024
             base_caption = (
-                f"<b>Вы выбрали товар: {name}\n\n</b>"
+                f"<b>Вы выбрали товар: {display_name}\n\n</b>"
                 f"<b>Дополнительная информация о товаре:\n</b>"
                 f"<b>Вес:</b> <code>{records[0][2]}⚖\n</code>"
                 f"<b>Цена:</b> <code>{records[0][3]}💵\n</code>"
