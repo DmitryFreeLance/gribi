@@ -67,6 +67,7 @@ class ProfileStatesGroup(StatesGroup):
     categories = State()
     tovar = State()
     insaid_tovar = State()
+    tea_weight = State()
     count_insaid_tovar = State()
     basket_menu = State()
     delete_product_one = State()

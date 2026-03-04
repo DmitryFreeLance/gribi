@@ -53,6 +53,95 @@ global address_BCE
 form_router = Router()
 
 
+def extract_tea_base(name: str) -> str:
+    text = re.sub(r"(?i)^\\s*чай\\s+", "", name).strip()
+    text = re.sub(r"\\s*\\([^)]*\\)\\s*$", "", text).strip()
+    text = re.sub(r"\\s{2,}", " ", text).strip()
+    return text or name
+
+
+async def show_product_card(message: types.Message, state: FSMContext, record, display_name: str = None):
+    product_id = record[0]
+    actual_name = record[1]
+    if display_name is None:
+        display_name = actual_name
+
+    await state.update_data(product_id=product_id, product_name=actual_name)
+
+    # Проверяем текущее количество товара в корзине
+    user_products = await get_basket_for_user(message.from_user.id)
+    current_count = 0
+    for prod_id, _, count in user_products:
+        if prod_id == product_id:
+            current_count = count
+            break
+
+    # Создаем inline кнопки
+    inline_kb = [
+        [
+            types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
+            types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
+            types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
+        ],
+        [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
+        [types.InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_categories")]
+    ]
+    inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+
+    filename_photo = record[5]
+    default_image = 'images/image_2026-01-01_15-47-02.png'
+    if filename_photo and os.path.exists(filename_photo):
+        image_path = filename_photo
+    elif os.path.exists(default_image):
+        image_path = default_image
+    else:
+        image_path = None
+
+    if image_path:
+        with Image.open(image_path) as img:
+            img_resized = img.resize((330, 330))
+            enhancer = ImageEnhance.Sharpness(img_resized)
+            img_sharpened = enhancer.enhance(2.0)
+
+        output = io.BytesIO()
+        img_sharpened.save(output, format='PNG')
+        output.seek(0)
+    else:
+        output = None
+
+    description = record[6] if record[6] is not None else ''
+    max_caption_length = 1024
+    base_caption = (
+        f"<b>Вы выбрали товар: {display_name}\n\n</b>"
+        f"<b>Дополнительная информация о товаре:\n</b>"
+        f"<b>Вес:</b> <code>{record[2]}⚖\n</code>"
+        f"<b>Цена:</b> <code>{record[3]}💵\n</code>"
+        f"<b>Полное описание можете посмотреть тут:</b>\n{WEBSITE_URL}\n"
+        f"<b>Описание:</b> "
+    )
+    remaining_length = max_caption_length - len(base_caption)
+    if len(description) > remaining_length:
+        description = description[:remaining_length - 3] + "..."
+    caption = f"{base_caption}{description}"
+
+    if output:
+        await message.answer_photo(
+            BufferedInputFile(
+                output.read(),
+                filename=filename_photo or 'product.png',
+            ),
+            caption=caption,
+            parse_mode='HTML',
+            reply_markup=inline_keyboard
+        )
+    else:
+        await message.answer(
+            caption,
+            parse_mode='HTML',
+            reply_markup=inline_keyboard
+        )
+
+
 # старт
 @form_router.message(CommandStart())
 async def command_start_handler(message: types.Message, state: FSMContext) -> None:
@@ -196,48 +285,53 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         cursor = sqlite_connection.cursor()
         cursor.execute(f"SELECT * FROM list_gribs WHERE topic=?", (topic,))
         records = cursor.fetchall()
-        def _tea_label(text: str) -> str:
-            text = re.sub(r"(?i)\\bчай\\b\\s*", "", text)
-            text = re.sub(r"\\s{2,}", " ", text)
-            return text.strip() or text
-
-        name_map = {}
+        tea_groups = {}
         if topic == "Чай":
             for record in records:
-                original_name = record[1]
-                display_name = _tea_label(original_name)
-                if not display_name:
-                    display_name = original_name
-                name_map[display_name] = original_name
+                base = extract_tea_base(record[1])
+                tea_groups.setdefault(base, [])
+                tea_groups[base].append({
+                    "id": record[0],
+                    "name": record[1],
+                    "wt": record[2],
+                    "cash": record[3],
+                })
 
-        await state.update_data(current_topic=topic, name_map=name_map)
+        await state.update_data(current_topic=topic, tea_groups=tea_groups)
 
-        kb = [
-            [types.KeyboardButton(text="Назад ⬅")],
-            [types.KeyboardButton(text="📦 Корзина")],
-        ]
-        for i in range(0, len(records), 2):
-            record_current = records[i][1]
-            if topic == "Чай" and name_map:
-                display_current = _tea_label(record_current)
-                button_current = types.KeyboardButton(text=display_current, payload=record_current)
-            else:
-                button_current = types.KeyboardButton(text=f"{record_current}")
-            if i + 1 < len(records):  # Проверяем, что следующая запись существует
-                record_next = records[i + 1][1]
-                if topic == "Чай" and name_map:
-                    display_next = _tea_label(record_next)
-                    button_next = types.KeyboardButton(text=display_next, payload=record_next)
+        kb = []
+        if topic == "Чай":
+            for base in tea_groups.keys():
+                kb.append([types.KeyboardButton(text=base)])
+        else:
+            kb = [
+                [types.KeyboardButton(text="Назад ⬅")],
+                [types.KeyboardButton(text="📦 Корзина")],
+            ]
+            for i in range(0, len(records), 2):
+                record_current = records[i][1]
+                if i + 1 < len(records):  # Проверяем, что следующая запись существует
+                    record_next = records[i + 1][1]
+                    kb.append([types.KeyboardButton(text=f"{record_current}"),
+                               types.KeyboardButton(text=f"{record_next}")])
                 else:
-                    button_next = types.KeyboardButton(text=f"{record_next}")
-                kb.append([button_current, button_next])
-            else:
-                kb.append([button_current])
+                    kb.append([types.KeyboardButton(text=f"{record_current}")])
 
         keyboard = inline_menu(kb)
-        await message.answer(f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
-                             "<i>📑 Чтобы добавить товар в корзину, просто нажмите на него и проследуйте инструкции.\n\n</i>",
-                             reply_markup=keyboard, parse_mode='html')
+        if topic == "Чай":
+            await message.answer(
+                f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
+                "<i>Выберите чай из списка ниже.</i>",
+                reply_markup=keyboard,
+                parse_mode='html'
+            )
+        else:
+            await message.answer(
+                f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
+                "<i>📑 Чтобы добавить товар в корзину, просто нажмите на него и проследуйте инструкции.\n\n</i>",
+                reply_markup=keyboard,
+                parse_mode='html'
+            )
         await state.set_state(ProfileStatesGroup.tovar)
 
     elif str(message.text) == 'Вернутся на главную ⬅':
@@ -270,99 +364,78 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
     elif message.text == "📦 Корзина":
         await show_basket(message, state)
     else:
+        if data.get("current_topic") == "Чай":
+            tea_groups = data.get("tea_groups") or {}
+            if message.text in tea_groups:
+                variants = tea_groups.get(message.text, [])
+                kb = []
+                for item in variants:
+                    kb.append([types.KeyboardButton(text=item.get("wt") or "Вес", payload=f"tea_item:{item['id']}")])
+                kb.append([types.KeyboardButton(text="⬅ Назад")])
+                kb.append([types.KeyboardButton(text="📦 Корзина")])
+                keyboard = inline_menu(kb)
+                await message.answer(
+                    f"<b>{message.text}</b>\n\n<i>Выберите граммовку:</i>",
+                    reply_markup=keyboard,
+                    parse_mode='html'
+                )
+                await state.update_data(selected_tea_base=message.text)
+                await state.set_state(ProfileStatesGroup.tea_weight)
+                return
+
         global name
         display_name = message.text
-        name_map = data.get("name_map") or {}
-        actual_name = name_map.get(display_name, display_name)
-        name = actual_name
+        name = display_name
         sqlite_connection = sqlite3.connect(DATABASE_NAME)
         cursor = sqlite_connection.cursor()
-        cursor.execute("SELECT * FROM list_gribs WHERE name=? ORDER BY id", (actual_name,))
+        cursor.execute("SELECT * FROM list_gribs WHERE name=? ORDER BY id", (display_name,))
         records = cursor.fetchall()
-        filename_photo = records[0][5]
-        
-        # Проверяем существование файла изображения
-        default_image = 'images/image_2026-01-01_15-47-02.png'
-        if filename_photo and os.path.exists(filename_photo):
-            image_path = filename_photo
-        elif os.path.exists(default_image):
-            image_path = default_image
-        else:
-            # Если нет изображения, отправляем только текст
-            image_path = None
-        
-        if image_path:
-            with Image.open(image_path) as img:
-                img_resized = img.resize((330, 330))
-                enhancer = ImageEnhance.Sharpness(img_resized)
-                img_sharpened = enhancer.enhance(2.0)
-
-            # Сохранение изменённого изображения в BytesIO
-            output = io.BytesIO()
-            img_sharpened.save(output, format='PNG')
-            output.seek(0)
-        else:
-            output = None
-
-        # Отправка изображения через бота
+        sqlite_connection.close()
         if len(records) > 0:
-            product_id = records[0][0]  # ID товара из базы данных
-            await state.update_data(product_id=product_id, product_name=actual_name)
-            
-            # Проверяем текущее количество товара в корзине
-            user_products = await get_basket_for_user(message.from_user.id)
-            current_count = 0
-            for prod_id, prod_name, count in user_products:
-                if prod_id == product_id:
-                    current_count = count
-                    break
-
-            # Создаем inline кнопки
-            inline_kb = [
-                [
-                    types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-                    types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
-                    types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
-                ],
-                [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
-                [types.InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_categories")]
-            ]
-            inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
-
-            description = records[0][6] if records[0][6] is not None else ''
-            max_caption_length = 1024
-            base_caption = (
-                f"<b>Вы выбрали товар: {display_name}\n\n</b>"
-                f"<b>Дополнительная информация о товаре:\n</b>"
-                f"<b>Вес:</b> <code>{records[0][2]}⚖\n</code>"
-                f"<b>Цена:</b> <code>{records[0][3]}💵\n</code>"
-                f"<b>Полное описание можете посмотреть тут:</b>\n{WEBSITE_URL}\n"
-                f"<b>Описание:</b> "
-            )
-            remaining_length = max_caption_length - len(base_caption)
-
-            if len(description) > remaining_length:
-                description = description[:remaining_length - 3] + "..."
-
-            caption = f"{base_caption}{description}"
-
-            if output:
-                await message.answer_photo(
-                    BufferedInputFile(
-                        output.read(),
-                        filename=filename_photo or 'product.png',
-                    ),
-                    caption=caption,
-                    parse_mode='HTML',
-                    reply_markup=inline_keyboard
-                )
-            else:
-                await message.answer(
-                    caption,
-                    parse_mode='HTML',
-                    reply_markup=inline_keyboard
-                )
+            await show_product_card(message, state, records[0], display_name=display_name)
             await state.set_state(ProfileStatesGroup.insaid_tovar)
+
+
+@form_router.message(ProfileStatesGroup.tea_weight)
+async def tea_weight_handler(message: types.Message, state: FSMContext) -> None:
+    data = await state.get_data()
+
+    if message.text == "📦 Корзина":
+        await show_basket(message, state)
+        return
+
+    if message.text == "⬅ Назад":
+        tea_groups = data.get("tea_groups") or {}
+        kb = []
+        for base in tea_groups.keys():
+            kb.append([types.KeyboardButton(text=base)])
+        keyboard = inline_menu(kb)
+        await message.answer(
+            "<i>Выберите чай из списка ниже.</i>",
+            reply_markup=keyboard,
+            parse_mode='html'
+        )
+        await state.set_state(ProfileStatesGroup.tovar)
+        return
+
+    if isinstance(message.text, str) and message.text.startswith("tea_item:"):
+        try:
+            product_id = int(message.text.split("tea_item:", 1)[1])
+        except ValueError:
+            await message.answer("Не удалось определить товар.")
+            return
+        sqlite_connection = sqlite3.connect(DATABASE_NAME)
+        cursor = sqlite_connection.cursor()
+        cursor.execute("SELECT * FROM list_gribs WHERE id=? ORDER BY id", (product_id,))
+        records = cursor.fetchall()
+        sqlite_connection.close()
+        if not records:
+            await message.answer("Товар не найден.")
+            return
+        record = records[0]
+        await show_product_card(message, state, record, display_name=record[1])
+        await state.set_state(ProfileStatesGroup.insaid_tovar)
+        return
 
 
 # Обработчик inline кнопок для изменения количества товара
@@ -859,100 +932,16 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
     else:
         global name
         display_name = message.text
-        name_map = data.get("name_map") or {}
-        actual_name = name_map.get(display_name, display_name)
-        name = actual_name
+        name = display_name
         sqlite_connection = sqlite3.connect(DATABASE_NAME)
         cursor = sqlite_connection.cursor()
-        cursor.execute("SELECT * FROM list_gribs WHERE name=? ORDER BY id", (actual_name,))
+        cursor.execute("SELECT * FROM list_gribs WHERE name=? ORDER BY id", (display_name,))
         records = cursor.fetchall()
         
         if len(records) == 0:
             return  # Товар не найден
-        
-        filename_photo = records[0][5]
-        
-        # Проверяем существование файла изображения
-        default_image = 'images/image_2026-01-01_15-47-02.png'
-        if filename_photo and os.path.exists(filename_photo):
-            image_path = filename_photo
-        elif os.path.exists(default_image):
-            image_path = default_image
-        else:
-            # Если нет изображения, отправляем только текст
-            image_path = None
-        
-        if image_path:
-            with Image.open(image_path) as img:
-                img_resized = img.resize((330, 330))
-                enhancer = ImageEnhance.Sharpness(img_resized)
-                img_sharpened = enhancer.enhance(2.0)
-
-            # Сохранение изменённого изображения в BytesIO
-            output = io.BytesIO()
-            img_sharpened.save(output, format='PNG')
-            output.seek(0)
-        else:
-            output = None
-
-        # Отправка изображения через бота
         if len(records) > 0:
-            product_id = records[0][0]  # ID товара из базы данных
-            await state.update_data(product_id=product_id, product_name=actual_name)
-            
-            # Проверяем текущее количество товара в корзине
-            user_products = await get_basket_for_user(message.from_user.id)
-            current_count = 0
-            for prod_id, prod_name, count in user_products:
-                if prod_id == product_id:
-                    current_count = count
-                    break
-
-            # Создаем inline кнопки
-            inline_kb = [
-                [
-                    types.InlineKeyboardButton(text="➖", callback_data=f"decrease_{product_id}"),
-                    types.InlineKeyboardButton(text=f"Колич.: {current_count}", callback_data="count_display"),
-                    types.InlineKeyboardButton(text="➕", callback_data=f"increase_{product_id}")
-                ],
-                [types.InlineKeyboardButton(text="📝 Ввести количество", callback_data=f"input_count_{product_id}")],
-                [types.InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_categories")]
-            ]
-            inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
-
-            description = records[0][6] if records[0][6] is not None else ''
-            max_caption_length = 1024
-            base_caption = (
-                f"<b>Вы выбрали товар: {display_name}\n\n</b>"
-                f"<b>Дополнительная информация о товаре:\n</b>"
-                f"<b>Вес:</b> <code>{records[0][2]}⚖\n</code>"
-                f"<b>Цена:</b> <code>{records[0][3]}💵\n</code>"
-                f"<b>Полное описание можете посмотреть тут:</b>\n{WEBSITE_URL}\n"
-                f"<b>Описание:</b> "
-            )
-
-            if len(base_caption) + len(description) > max_caption_length:
-                caption = base_caption + description[:max_caption_length - len(base_caption) - 3] + "..."
-            else:
-                caption = base_caption + description
-
-            if output:
-                await message.answer_photo(
-                    BufferedInputFile(
-                        output.read(),
-                        filename=filename_photo or 'product.png',
-                    ),
-                    caption=caption,
-                    parse_mode='HTML',
-                    reply_markup=inline_keyboard
-                )
-            else:
-                await message.answer(
-                    caption,
-                    parse_mode='HTML',
-                    reply_markup=inline_keyboard
-                )
-            
+            await show_product_card(message, state, records[0], display_name=display_name)
             sqlite_connection.close()
             await state.set_state(ProfileStatesGroup.insaid_tovar)
 
