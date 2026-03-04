@@ -27,7 +27,6 @@ async def show_basket(message, state):
     user_products = await get_basket_for_user(user_id)
     if len(user_products) > 0:
         total_sum = 0
-        delete_rows = []
         
         # Выводим каждый товар отдельным сообщением с кнопкой удаления
         for i, (product_id, product, count) in enumerate(user_products, 1):
@@ -36,12 +35,15 @@ async def show_basket(message, state):
                 # Если товар не найден, используем базовую информацию
                 product_text = (
                     f"📦 <b>Товар {i}</b>\n\n"
-                    f"ID: {product_id}\n"
                     f"<b>{product}</b>\n"
                     f"Количество: {count} шт\n"
                 )
-                await message.answer(product_text, parse_mode='html')
-                delete_rows.append([types.KeyboardButton(text=f"🗑 Удалить {product_id}")])
+                # Создаем inline кнопку для удаления
+                inline_kb = [
+                    [types.InlineKeyboardButton(text="🗑 Удалить из корзины", callback_data=f"remove_from_basket_{product_id}")]
+                ]
+                inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+                await message.answer(product_text, parse_mode='html', reply_markup=inline_keyboard)
                 continue
             
             price_per_item = int(str(product_info[0][3]).replace("₽", ""))
@@ -50,15 +52,19 @@ async def show_basket(message, state):
             
             product_text = (
                 f"📦 <b>Товар {i}</b>\n\n"
-                f"ID: {product_id}\n"
                 f"<b>{product}</b>\n"
                 f"Количество: {count} шт\n"
                 f"Вес: {product_info[0][2]}⚖\n"
                 f"Цена за единицу: {product_info[0][3]}\n"
                 f"<b>Общая цена: {total_price}₽</b>"
             )
-            await message.answer(product_text, parse_mode='html')
-            delete_rows.append([types.KeyboardButton(text=f"🗑 Удалить {product_id}")])
+            
+            # Создаем inline кнопку для удаления
+            inline_kb = [
+                [types.InlineKeyboardButton(text="🗑 Удалить из корзины", callback_data=f"remove_from_basket_{product_id}")]
+            ]
+            inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+            await message.answer(product_text, parse_mode='html', reply_markup=inline_keyboard)
         
         # Выводим общую сумму корзины
         total_message = (
@@ -68,7 +74,6 @@ async def show_basket(message, state):
         
         # Кнопки для действий с корзиной
         kd = [
-            *delete_rows,
             [types.KeyboardButton(text=f"🗑 Очистить корзину")],
             [types.KeyboardButton(text=f"Вернуться в меню категорий ⬅"),
              types.KeyboardButton(text=f"☑ Оплатить корзину")],

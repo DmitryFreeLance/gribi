@@ -2,12 +2,14 @@ from maxbot import types
 
 
 def inline_menu(rows):
-    """Builds reply keyboard (non-inline)."""
-    keyboard_rows = []
+    """Builds inline menu where each button sends callback_data with menu: prefix."""
+    inline_rows = []
     for row in rows:
-        keyboard_row = []
+        inline_row = []
         for label in row:
             text = label.text if hasattr(label, "text") else str(label)
-            keyboard_row.append(types.KeyboardButton(text=text))
-        keyboard_rows.append(keyboard_row)
-    return types.ReplyKeyboardMarkup(keyboard=keyboard_rows, resize_keyboard=True)
+            inline_row.append(
+                types.InlineKeyboardButton(text=text, callback_data=f"menu:{text}")
+            )
+        inline_rows.append(inline_row)
+    return types.InlineKeyboardMarkup(inline_keyboard=inline_rows)
