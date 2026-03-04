@@ -283,7 +283,7 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         kb = []
         if topic == "Чай":
             items = [record[1] for record in records]
-            chunk_size = 18
+            chunk_size = 21
             chunks = [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
             first = True
             for chunk in chunks:
