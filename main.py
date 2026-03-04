@@ -301,8 +301,29 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
 
         kb = []
         if topic == "Чай":
-            for base in tea_groups.keys():
-                kb.append([types.KeyboardButton(text=base)])
+            bases = list(tea_groups.keys())
+            chunk_size = 8
+            chunks = [bases[i:i + chunk_size] for i in range(0, len(bases), chunk_size)]
+            first = True
+            for chunk in chunks:
+                kb = [[types.KeyboardButton(text=base)] for base in chunk]
+                keyboard = inline_menu(kb)
+                if first:
+                    await message.answer(
+                        f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
+                        "<i>Выберите чай из списка ниже.</i>",
+                        reply_markup=keyboard,
+                        parse_mode='html'
+                    )
+                    first = False
+                else:
+                    await message.answer(
+                        "<i>Продолжение списка чаёв:</i>",
+                        reply_markup=keyboard,
+                        parse_mode='html'
+                    )
+            await state.set_state(ProfileStatesGroup.tovar)
+            return
         else:
             kb = [
                 [types.KeyboardButton(text="Назад ⬅")],
@@ -318,20 +339,12 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
                     kb.append([types.KeyboardButton(text=f"{record_current}")])
 
         keyboard = inline_menu(kb)
-        if topic == "Чай":
-            await message.answer(
-                f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
-                "<i>Выберите чай из списка ниже.</i>",
-                reply_markup=keyboard,
-                parse_mode='html'
-            )
-        else:
-            await message.answer(
-                f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
-                "<i>📑 Чтобы добавить товар в корзину, просто нажмите на него и проследуйте инструкции.\n\n</i>",
-                reply_markup=keyboard,
-                parse_mode='html'
-            )
+        await message.answer(
+            f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"
+            "<i>📑 Чтобы добавить товар в корзину, просто нажмите на него и проследуйте инструкции.\n\n</i>",
+            reply_markup=keyboard,
+            parse_mode='html'
+        )
         await state.set_state(ProfileStatesGroup.tovar)
 
     elif str(message.text) == 'Вернутся на главную ⬅':
@@ -406,15 +419,26 @@ async def tea_weight_handler(message: types.Message, state: FSMContext) -> None:
 
     if message.text == "⬅ Назад":
         tea_groups = data.get("tea_groups") or {}
-        kb = []
-        for base in tea_groups.keys():
-            kb.append([types.KeyboardButton(text=base)])
-        keyboard = inline_menu(kb)
-        await message.answer(
-            "<i>Выберите чай из списка ниже.</i>",
-            reply_markup=keyboard,
-            parse_mode='html'
-        )
+        bases = list(tea_groups.keys())
+        chunk_size = 8
+        chunks = [bases[i:i + chunk_size] for i in range(0, len(bases), chunk_size)]
+        first = True
+        for chunk in chunks:
+            kb = [[types.KeyboardButton(text=base)] for base in chunk]
+            keyboard = inline_menu(kb)
+            if first:
+                await message.answer(
+                    "<i>Выберите чай из списка ниже.</i>",
+                    reply_markup=keyboard,
+                    parse_mode='html'
+                )
+                first = False
+            else:
+                await message.answer(
+                    "<i>Продолжение списка чаёв:</i>",
+                    reply_markup=keyboard,
+                    parse_mode='html'
+                )
         await state.set_state(ProfileStatesGroup.tovar)
         return
 
