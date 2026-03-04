@@ -219,15 +219,20 @@ async def load_name(message: types.Message, state: FSMContext) -> None:
         for i in range(0, len(records), 2):
             record_current = records[i][1]
             if topic == "Чай" and name_map:
-                record_current = _tea_label(record_current)
+                display_current = _tea_label(record_current)
+                button_current = types.KeyboardButton(text=display_current, payload=record_current)
+            else:
+                button_current = types.KeyboardButton(text=f"{record_current}")
             if i + 1 < len(records):  # Проверяем, что следующая запись существует
                 record_next = records[i + 1][1]
                 if topic == "Чай" and name_map:
-                    record_next = _tea_label(record_next)
-                kb.append([types.KeyboardButton(text=f"{record_current}"),
-                           types.KeyboardButton(text=f"{record_next}")])
+                    display_next = _tea_label(record_next)
+                    button_next = types.KeyboardButton(text=display_next, payload=record_next)
+                else:
+                    button_next = types.KeyboardButton(text=f"{record_next}")
+                kb.append([button_current, button_next])
             else:
-                kb.append([types.KeyboardButton(text=f"{record_current}")])
+                kb.append([button_current])
 
         keyboard = inline_menu(kb)
         await message.answer(f"<b>🧷 Добро пожаловать в раздел: {message.text}\n\n</b>"

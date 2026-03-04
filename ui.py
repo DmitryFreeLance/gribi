@@ -8,8 +8,10 @@ def inline_menu(rows):
         inline_row = []
         for label in row:
             text = label.text if hasattr(label, "text") else str(label)
+            payload = getattr(label, "payload", None)
+            callback_text = payload if payload is not None and str(payload) != "" else text
             inline_row.append(
-                types.InlineKeyboardButton(text=text, callback_data=f"menu:{text}")
+                types.InlineKeyboardButton(text=text, callback_data=f"menu:{callback_text}")
             )
         inline_rows.append(inline_row)
     return types.InlineKeyboardMarkup(inline_keyboard=inline_rows)
