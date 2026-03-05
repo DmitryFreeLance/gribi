@@ -28,6 +28,7 @@ MAX_API_BASE_URL=https://platform-api.max.ru
 # MAX_SSL_VERIFY=0
 # MAX_FORCE_USER_ID=1
 # MAX_API_VERSION=your_api_version_if_needed
+MAX_GROUP_ID=your_max_group_chat_id_here
 ADMIN_ID=your_admin_id_here
 
 # Payment Configuration
@@ -61,6 +62,7 @@ DELIVERY_CDEK_PRICE=300
 - `MAX_USE_QUERY_TOKEN` - включить передачу токена через query-параметр (для старого botapi домена)
 - `MAX_SSL_VERIFY` - отключить проверку SSL (только если у вас корпоративный прокси с подменой сертификата)
 - `MAX_FORCE_USER_ID` - отправлять личные сообщения через user_id даже если передан chat_id
+- `MAX_GROUP_ID` - ID группы в Max (для команды /post)
 - `ADMIN_ID` - ваш ID в Max (можно несколько через запятую)
 - `DEFAULT_DB_PATH` - путь к шаблонной БД для первичной инициализации (если DATABASE_NAME отсутствует)
 - Остальные значения настройте по необходимости

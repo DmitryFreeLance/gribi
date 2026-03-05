@@ -180,12 +180,13 @@ class MaxBot:
         if final_attachments:
             body["attachments"] = final_attachments
         params: Dict[str, Any] = {}
-        if user_id is None and chat_id is not None and self.force_user_id:
-            params["user_id"] = chat_id
-        elif chat_id is not None:
-            params["chat_id"] = chat_id
-        elif user_id is not None:
+        if user_id is not None:
             params["user_id"] = user_id
+        elif chat_id is not None:
+            if self.force_user_id and chat_id > 0:
+                params["user_id"] = chat_id
+            else:
+                params["chat_id"] = chat_id
         response = await self._request("POST", "/messages", params=params, json_data=body)
         return self._message_from_api(response.get("message"))
 

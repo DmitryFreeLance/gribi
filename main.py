@@ -40,6 +40,11 @@ SHOP_PHONE = os.getenv('SHOP_PHONE', '89874974987')
 SHOP_HOURS = os.getenv('SHOP_HOURS', '11:00-19:00')
 DELIVERY_YANDEX_PRICE = int(os.getenv('DELIVERY_YANDEX_PRICE', '250'))
 DELIVERY_CDEK_PRICE = int(os.getenv('DELIVERY_CDEK_PRICE', '300'))
+MAX_GROUP_ID = os.getenv('MAX_GROUP_ID') or os.getenv('GROUP_ID')
+try:
+    MAX_GROUP_ID = int(MAX_GROUP_ID) if MAX_GROUP_ID else None
+except ValueError:
+    MAX_GROUP_ID = None
 global name
 global address
 global address_CDEK
@@ -135,6 +140,53 @@ async def show_product_card(message: types.Message, state: FSMContext, record, d
         )
 
 
+def parse_post_buttons(text: str):
+    buttons = []
+    errors = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if " - " not in line:
+            errors.append(raw_line)
+            continue
+        name, url = line.split(" - ", 1)
+        name = name.strip()
+        url = url.strip()
+        if not name or not url:
+            errors.append(raw_line)
+            continue
+        buttons.append({"text": name, "url": url})
+    return buttons, errors
+
+
+def build_link_keyboard(buttons):
+    rows = []
+    for btn in buttons:
+        rows.append([types.InlineKeyboardButton(text=btn["text"], url=btn["url"])])
+    return types.InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def publish_post_from_state(message: types.Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    text = data.get("post_text")
+    buttons = data.get("post_buttons") or []
+
+    if not text:
+        await message.answer("Текст поста не задан. Используйте /post заново.")
+        await state.clear()
+        return
+    if not MAX_GROUP_ID:
+        await message.answer("MAX_GROUP_ID не задан в .env. Укажите ID группы и попробуйте снова.")
+        await state.clear()
+        return
+
+    reply_markup = build_link_keyboard(buttons) if buttons else None
+    await bot.send_message(chat_id=MAX_GROUP_ID, text=text, reply_markup=reply_markup)
+    await message.answer("✅ Пост опубликован в группу.")
+    await state.clear()
+
+
 # старт
 @form_router.message(CommandStart())
 async def command_start_handler(message: types.Message, state: FSMContext) -> None:
@@ -143,6 +195,70 @@ async def command_start_handler(message: types.Message, state: FSMContext) -> No
     keyboard = inline_menu(kb)
     await message.answer(f"Здравствуй, {hbold(message.from_user.full_name)}!\n\n<i>Выберите действие</i>", parse_mode='html', reply_markup=keyboard)
     await state.set_state(ProfileStatesGroup.menu_start)
+
+
+@form_router.message(Command(commands=["post"]))
+async def post_start_handler(message: types.Message, state: FSMContext) -> None:
+    if str(message.from_user.id) not in admin_id:
+        await message.answer("Доступ только для администратора.")
+        return
+    await state.clear()
+    await message.answer("Введите текст поста для публикации в группу Max:")
+    await state.set_state(ProfileStatesGroup.post_text)
+
+
+@form_router.message(ProfileStatesGroup.post_text)
+async def post_text_handler(message: types.Message, state: FSMContext) -> None:
+    if str(message.from_user.id) not in admin_id:
+        await message.answer("Доступ только для администратора.")
+        await state.clear()
+        return
+    await state.update_data(post_text=message.text, post_buttons=[])
+    inline_kb = [[types.InlineKeyboardButton(text="✅ Готово", callback_data="post_done")]]
+    inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    await message.answer(
+        'Теперь отправьте кнопки в формате: "НАЗВАНИЕ - ССЫЛКА"\n'
+        'Можно несколько строк в одном сообщении.\n\n'
+        'Когда закончите — нажмите "Готово".',
+        reply_markup=inline_keyboard
+    )
+    await state.set_state(ProfileStatesGroup.post_buttons)
+
+
+@form_router.message(ProfileStatesGroup.post_buttons)
+async def post_buttons_handler(message: types.Message, state: FSMContext) -> None:
+    if str(message.from_user.id) not in admin_id:
+        await message.answer("Доступ только для администратора.")
+        await state.clear()
+        return
+    if isinstance(message.text, str) and message.text.strip().lower() == "готово":
+        await publish_post_from_state(message, state)
+        return
+    buttons, errors = parse_post_buttons(message.text or "")
+    data = await state.get_data()
+    existing = data.get("post_buttons") or []
+    if buttons:
+        existing.extend(buttons)
+        await state.update_data(post_buttons=existing)
+    inline_kb = [[types.InlineKeyboardButton(text="✅ Готово", callback_data="post_done")]]
+    inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+    if buttons:
+        msg = f"Добавлено кнопок: {len(buttons)}.\n"
+    else:
+        msg = "Кнопки не распознаны.\n"
+    if errors:
+        msg += "Не удалось разобрать строки:\n" + "\n".join(errors) + "\n"
+    msg += 'Пришлите следующую кнопку в формате: "НАЗВАНИЕ - ССЫЛКА"\nили нажмите "Готово".'
+    await message.answer(msg, reply_markup=inline_keyboard)
+
+
+@form_router.callback_query(F.data == "post_done")
+async def post_done_callback(callback: types.CallbackQuery, state: FSMContext) -> None:
+    if str(callback.from_user.id) not in admin_id:
+        await callback.answer("Доступ только для администратора.", show_alert=True)
+        return
+    await publish_post_from_state(callback.message, state)
+    await callback.answer("Опубликовано")
 
 
 @form_router.message(Command(commands=["checking"]))

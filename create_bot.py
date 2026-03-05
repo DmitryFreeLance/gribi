@@ -84,6 +84,8 @@ class ProfileStatesGroup(StatesGroup):
     pay_cart_BCE = State()
     zabrat_iz_magaziana = State()
     cancel_order_reason = State()
+    post_text = State()
+    post_buttons = State()
 
     name = State()
     price = State()
