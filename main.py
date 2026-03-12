@@ -171,6 +171,7 @@ async def publish_post_from_state(message: types.Message, state: FSMContext) -> 
     data = await state.get_data()
     text = data.get("post_text")
     buttons = data.get("post_buttons") or []
+    attachments = data.get("post_attachments") or None
 
     if not text:
         await message.answer("Текст поста не задан. Используйте /post заново.")
@@ -182,7 +183,7 @@ async def publish_post_from_state(message: types.Message, state: FSMContext) -> 
         return
 
     reply_markup = build_link_keyboard(buttons) if buttons else None
-    await bot.send_message(chat_id=MAX_GROUP_ID, text=text, reply_markup=reply_markup)
+    await bot.send_message(chat_id=MAX_GROUP_ID, text=text, reply_markup=reply_markup, attachments=attachments)
     await message.answer("✅ Пост опубликован в группу.")
     await state.clear()
 
@@ -213,7 +214,17 @@ async def post_text_handler(message: types.Message, state: FSMContext) -> None:
         await message.answer("Доступ только для администратора.")
         await state.clear()
         return
-    await state.update_data(post_text=message.text, post_buttons=[])
+    attachments = []
+    for att in (message.attachments or []):
+        if att.get("type") == "image":
+            payload = att.get("payload") or {}
+            if payload:
+                attachments.append({"type": "image", "payload": payload})
+    post_text = message.text or ""
+    if not post_text and not attachments:
+        await message.answer("Введите текст поста или отправьте фото с подписью.")
+        return
+    await state.update_data(post_text=post_text, post_buttons=[], post_attachments=attachments)
     inline_kb = [[types.InlineKeyboardButton(text="✅ Готово", callback_data="post_done")]]
     inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
     await message.answer(
@@ -233,6 +244,20 @@ async def post_buttons_handler(message: types.Message, state: FSMContext) -> Non
         return
     if isinstance(message.text, str) and message.text.strip().lower() == "готово":
         await publish_post_from_state(message, state)
+        return
+    attachments = []
+    for att in (message.attachments or []):
+        if att.get("type") == "image":
+            payload = att.get("payload") or {}
+            if payload:
+                attachments.append({"type": "image", "payload": payload})
+    if attachments:
+        if message.text:
+            await state.update_data(post_text=message.text)
+        await state.update_data(post_attachments=attachments)
+        inline_kb = [[types.InlineKeyboardButton(text="✅ Готово", callback_data="post_done")]]
+        inline_keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_kb)
+        await message.answer("Фото добавлено. Можно добавить кнопки или нажмите \"Готово\".", reply_markup=inline_keyboard)
         return
     buttons, errors = parse_post_buttons(message.text or "")
     data = await state.get_data()
